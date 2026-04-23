@@ -1,0 +1,26 @@
+body {
+	background: #210b0b;
+	margin: 0;
+	padding: 0;
+	font-family: "Roboto", serif;
+	color: white;
+	font-size: 18px;
+}
+
+h2 {
+	margin-top: 50px;
+}
+
+#content {
+	width: 900px;
+	padding-top: 40px;
+	margin: 0 auto;
+}
+
+a {
+	color: #ffd100;
+}
+
+#logo {
+	width: 350px;
+}

@@ -5,20 +5,44 @@ body {
 	font-family: "Roboto", serif;
 	color: white;
 	font-size: 18px;
+	padding-bottom: 200px;
+}
+
+p {
+	line-height: 1.7em;
 }
 
 h2 {
 	margin-top: 50px;
 }
 
+li {
+	line-height: 1.7em;
+}
+
 #content {
-	width: 900px;
+	width: 700px;
 	padding-top: 40px;
 	margin: 0 auto;
 }
 
 a {
 	color: #ffd100;
+}
+
+.your-game-here {
+	width: calc(100% - 220px);
+	border: 2px dashed #ffd100;
+	border-radius: 10px;
+	padding: 100px 50px;
+	margin: 50px 50px;
+	text-align: center;
+}
+
+.your-game-here .header {
+	font-style: italic;
+	font-weight: bold;
+	font-size: 24px;
 }
 
 #logo {

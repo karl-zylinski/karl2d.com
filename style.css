@@ -73,7 +73,6 @@ a {
 
 	.your-game-here {
 		width: calc(100% - 40px);
-		margin: 0;
 		padding: 10px 20px;
 	}
 }

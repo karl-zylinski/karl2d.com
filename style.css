@@ -26,7 +26,7 @@ a img {
 }
 
 #content {
-	width: 700px;
+	width: 650px;
 	padding-top: 40px;
 	margin: 0 auto;
 }
@@ -35,26 +35,11 @@ a {
 	color: #ffd100;
 }
 
-.your-game-here {
-	margin-top: 30px;
-	width: calc(100% - 100px);
-	border: 2px dashed #ffd100;
-	border-radius: 10px;
-	padding: 100px 50px;
-	text-align: center;
-}
-
-.your-game-here .header {
-	font-style: italic;
-	font-weight: bold;
-	font-size: 24px;
-}
-
 #logo {
 	width: 350px;
 }
 
-@media screen and (max-width: 750px) {
+@media screen and (max-width: 650px) {
 	body {
 		margin: 0 5px;
 		padding: 0;

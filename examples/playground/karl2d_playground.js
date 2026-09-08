@@ -95,10 +95,37 @@ async function fetchExampleFiles(example) {
 	}
 	const files = new Map();
 	await Promise.all(example.files.map(async (path) => {
-		files.set(path, await fetchBinary("examples/" + example.dir + "/" + path));
+		try {
+			files.set(path, await fetchBinary("examples/" + example.dir + "/" + path));
+		} catch (e) {
+			// A server may refuse to serve a file the example does not really
+			// need (dotfiles, say): only its sources are worth failing over
+			if (isSource(path)) {
+				throw e;
+			}
+			consoleElement.textContent += e.message + "\n";
+		}
 	}));
 	exampleFiles.set(example.dir, files);
 	return files;
+}
+
+function exampleRoot(example) {
+	return "odin/karl2d/examples/" + example.dir + "/";
+}
+
+// The example as the compiler sees it: its files (edited ones as text, the
+// rest as the bytes that were fetched) and Karl2D's web entry point
+async function exampleFileList(example) {
+	const files = await fetchExampleFiles(example);
+	const root = exampleRoot(example);
+	const list = [];
+	for (const [path, data] of files) {
+		const key = fileKey(example.dir, path);
+		list.push({path: root + path, data: edited.has(key) ? edited.get(key) : data});
+	}
+	list.push({path: root + "build/web/entry.odin", data: entrySource});
+	return list;
 }
 
 function fileKey(dir, path) {
@@ -221,10 +248,12 @@ async function selectExample(dir) {
 		updateStatus("Loading " + dir + "...");
 	}
 	try {
-		await fetchExampleFiles(example);
+		const list = await exampleFileList(example);
 		if (current !== example) {
 			return; // another example was picked while this one was loading
 		}
+		// Get the packages it imports on their way before Run is pressed
+		worker.postMessage({type: "prefetch", files: list});
 		openFile(example.main);
 		updateStatus(compilerReady ? "Ready" : "Loading compiler...");
 	} catch (e) {
@@ -247,19 +276,11 @@ async function compileAndRun() {
 	stopGame();
 
 	const example = current;
-	const files = await fetchExampleFiles(example);
-	const root = "odin/karl2d/examples/" + example.dir + "/";
-	const list = [];
-	for (const [path, data] of files) {
-		// Every edited source is sent as text, the rest as the bytes fetched
-		const key = fileKey(example.dir, path);
-		list.push({path: root + path, data: edited.has(key) ? edited.get(key) : data});
-	}
-	list.push({path: root + "build/web/entry.odin", data: entrySource});
+	const list = await exampleFileList(example);
 	worker.postMessage({
 		type: "compile",
 		files: list,
-		dir: "/" + root + "build/web",
+		dir: "/" + exampleRoot(example) + "build/web",
 		flags: ["-target:js_wasm32"],
 	});
 }
@@ -379,6 +400,55 @@ if (testParams.has("test")) {
 			compileAndRun();
 		}
 	}, 100);
+}
+
+// The divider between the editor and the game. The game runs in an iframe,
+// which would swallow the pointer events of a drag that passes over it, so it
+// is made transparent to them while the divider is held.
+const SPLIT_KEY = "karl2d-playground-split";
+{
+	const divider = document.getElementById("divider");
+	const leftPane = document.getElementById("left");
+	const mainElement = document.querySelector("main");
+	const MIN_PANE = 180; // px, so neither side can be dragged away entirely
+
+	const setSplit = (fraction) => {
+		leftPane.style.flexBasis = (fraction*100).toFixed(3) + "%";
+	};
+	const saved = parseFloat(localStorage.getItem(SPLIT_KEY));
+	if (saved > 0 && saved < 1) {
+		setSplit(saved);
+	}
+
+	divider.addEventListener("pointerdown", (event) => {
+		event.preventDefault();
+		divider.classList.add("dragging");
+		// The drag is followed on the window, so that it keeps up with a
+		// pointer that has left the divider (or the window)
+		gameFrame.style.pointerEvents = "none";
+
+		const move = (ev) => {
+			const rect = mainElement.getBoundingClientRect();
+			const x = Math.min(Math.max(ev.clientX - rect.left, MIN_PANE), rect.width - MIN_PANE);
+			const fraction = x/rect.width;
+			setSplit(fraction);
+			localStorage.setItem(SPLIT_KEY, String(fraction));
+		};
+		const up = () => {
+			divider.classList.remove("dragging");
+			gameFrame.style.pointerEvents = "";
+			window.removeEventListener("pointermove", move);
+			window.removeEventListener("pointerup", up);
+			window.removeEventListener("pointercancel", up);
+		};
+		window.addEventListener("pointermove", move);
+		window.addEventListener("pointerup", up);
+		window.addEventListener("pointercancel", up);
+	});
+	divider.addEventListener("dblclick", () => {
+		setSplit(0.5);
+		localStorage.removeItem(SPLIT_KEY);
+	});
 }
 
 setup().catch((e) => updateStatus("Failed to load: " + e));

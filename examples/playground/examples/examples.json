@@ -19,7 +19,7 @@
 	{"dir": "positional_audio", "main": "positional_audio.odin", "files": ["positional_audio.odin"]},
 	{"dir": "raylib_ports/bunnymark", "main": "bunnymark.odin", "files": ["bunnymark.odin", "wabbit_alpha.png"]},
 	{"dir": "render_texture", "main": "render_texture.odin", "files": ["render_texture.odin"]},
-	{"dir": "snake", "main": "snake.odin", "files": [".gitignore", "LICENSE", "body.png", "food.png", "head.png", "snake.odin", "tail.png"]},
+	{"dir": "snake", "main": "snake.odin", "files": ["LICENSE", "body.png", "food.png", "head.png", "snake.odin", "tail.png"]},
 	{"dir": "space_cat", "main": "space_cat.odin", "files": ["README.md", "cat_down.png", "cat_east_west.png", "cat_up.png", "editor.odin", "enemy.png", "enemy_hidden.png", "grass.png", "ground_texture_1.png", "ground_texture_2.png", "ground_texture_3.png", "hit_hurt.wav", "key.png", "laser_shoot.wav", "moon.png", "plasma_1.png", "plasma_2.png", "plasma_3.png", "power_up.wav", "serializer_default.odin", "serializer_js.odin", "space_cat.odin", "space_tileset.png", "star_1.png", "star_2.png", "star_3.png", "star_4.png", "star_5.png", "stone_1.png", "stone_2.png", "stone_3.png", "the_object.png", "wall.png", "wall_down.png", "world.json"]},
 	{"dir": "touch", "main": "touch.odin", "files": ["touch.odin"]},
 	{"dir": "ui", "main": "ui.odin", "files": ["ui.odin"]}

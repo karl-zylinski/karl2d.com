@@ -1,5 +1,5 @@
 [
-	{"dir": "audio", "main": "audio.odin", "files": ["audio.odin", "brahms.ogg", "chord.wav"]},
+	{"dir": "audio", "main": "audio.odin", "files": ["audio.odin", "brahms.ogg", "chord.ogg"]},
 	{"dir": "audio_bus", "main": "audio_bus.odin", "files": ["audio_bus.odin"]},
 	{"dir": "basics", "main": "basics.odin", "files": ["basics.odin", "sixten.jpg"]},
 	{"dir": "box2d", "main": "karl2d_box2d.odin", "files": ["karl2d_box2d.odin"]},

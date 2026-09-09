@@ -1,0 +1,157 @@
+# Builds karl2d.com and publishes it to GitHub Pages.
+#
+# The site is mostly static files kept in this repository, but /playground is
+# built here: the Odin compiler from the wasm-backend fork is compiled to a
+# WASI module with wasi-sdk, the Odin and Karl2D sources are packed for it, and
+# the examples and the page itself come from playground/_source. So a push to
+# Odin or to Karl2D changes the site without anything being committed here,
+# which is what the hourly schedule is for: it looks at what the live site was
+# built from and only builds again when one of them has moved. An instant
+# rebuild can be asked for from another repository with
+#   gh api repos/karl-zylinski/karl2d.com/dispatches -f event_type=upstream-changed
+name: Deploy
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+  repository_dispatch:
+    types: [upstream-changed]
+  schedule:
+    - cron: "23 * * * *"
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+env:
+  ODIN_REPO: karl-zylinski/Odin
+  ODIN_REF: wasm-backend
+  KARL2D_REPO: karl-zylinski/karl2d
+  KARL2D_REF: master
+  WASI_SDK_VERSION: "34.0"
+
+jobs:
+  check:
+    name: What to build
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.check.outputs.build }}
+      odin_sha: ${{ steps.check.outputs.odin_sha }}
+      karl2d_sha: ${{ steps.check.outputs.karl2d_sha }}
+    steps:
+      - id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          odin=$(gh api "repos/$ODIN_REPO/commits/$ODIN_REF" --jq .sha)
+          karl2d=$(gh api "repos/$KARL2D_REPO/commits/$KARL2D_REF" --jq .sha)
+          echo "odin_sha=$odin" >> "$GITHUB_OUTPUT"
+          echo "karl2d_sha=$karl2d" >> "$GITHUB_OUTPUT"
+          echo "Odin $odin, Karl2D $karl2d"
+          # Everything but the hourly poll was asked for, so it builds
+          if [ "${{ github.event_name }}" != schedule ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          live=$(curl -fsSL --max-time 30 https://karl2d.com/playground/build.json || echo '{}')
+          if [ "$(echo "$live" | jq -r .odin)" = "$odin" ] && [ "$(echo "$live" | jq -r .karl2d)" = "$karl2d" ]; then
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            echo "The live site was built from these, nothing to do"
+          else
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "Live site was built from $live"
+          fi
+
+  build:
+    name: Build
+    needs: check
+    if: needs.check.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.ODIN_REPO }}
+          ref: ${{ needs.check.outputs.odin_sha }}
+          path: _build/Odin
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.KARL2D_REPO }}
+          ref: ${{ needs.check.outputs.karl2d_sha }}
+          path: _build/karl2d
+
+      # An Odin compiler to run playground/_source/pack_root with. Any recent
+      # one will do: the packer only reads the sources it packs.
+      - uses: laytan/setup-odin@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          release: nightly
+
+      - name: Cache wasi-sdk
+        id: wasi-sdk
+        uses: actions/cache@v4
+        with:
+          path: ~/wasi-sdk
+          key: wasi-sdk-${{ env.WASI_SDK_VERSION }}-x86_64-linux
+      - name: Install wasi-sdk
+        if: steps.wasi-sdk.outputs.cache-hit != 'true'
+        run: |
+          v=${WASI_SDK_VERSION}
+          url=https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${v%%.*}/wasi-sdk-$v-x86_64-linux.tar.gz
+          curl -fsSL "$url" | tar -xz -C "$RUNNER_TEMP"
+          mv "$RUNNER_TEMP/wasi-sdk-$v-x86_64-linux" "$HOME/wasi-sdk"
+
+      # The compiler module only depends on the Odin checkout, so it is kept
+      # between runs: a change to the site or to Karl2D does not rebuild it
+      - name: Cache the compiler module
+        id: compiler
+        uses: actions/cache@v4
+        with:
+          path: _build/odin.wasm
+          key: odin-wasm-${{ needs.check.outputs.odin_sha }}-wasi-sdk-${{ env.WASI_SDK_VERSION }}
+      - name: Build the compiler as a WASI module
+        if: steps.compiler.outputs.cache-hit != 'true'
+        run: |
+          cd _build/Odin
+          WASI_SDK=$HOME/wasi-sdk OUT=$GITHUB_WORKSPACE/_build/odin.wasm ./build_odin_wasi.sh release
+          ls -l "$GITHUB_WORKSPACE/_build/odin.wasm"
+
+      - name: Build the playground
+        env:
+          ODIN: ${{ github.workspace }}/_build/Odin
+          KARL2D: ${{ github.workspace }}/_build/karl2d
+          OUT: ${{ github.workspace }}/playground
+          ODIN_WASM: ${{ github.workspace }}/_build/odin.wasm
+          KARL2D_NO_UPDATE: "1" # the checkout is already the commit that was asked for
+        run: ./playground/_source/build_playground.sh
+
+      # The site is everything in the repository except its own workings: the
+      # playground's sources are not served, only what was built from them
+      - name: Assemble the site
+        run: |
+          mkdir -p _site
+          rsync -a --delete \
+            --exclude '.git' --exclude '.gitignore' --exclude '.github' \
+            --exclude '_build' --exclude '_site' --exclude 'playground/_source' \
+            ./ _site/
+          du -sh _site _site/playground
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

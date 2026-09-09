@@ -1,0 +1,4 @@
+# The playground is built by playground/_source/build_playground.sh and
+# published by the deploy workflow, not kept in git
+/playground/*
+!/playground/_source

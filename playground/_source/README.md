@@ -1,28 +1,31 @@
 # Karl2D Playground
 
-Runs the Odin compiler in the browser so that the [Karl2D](https://github.com/karl-zylinski/karl2d) examples can be edited, compiled and run on a web page: an example is picked from a dropdown, its source is shown in the editor, and Run compiles it and runs it in the pane next to it.
+Runs the Odin compiler in the browser so that the [Karl2D](https://github.com/karl-zylinski/karl2d) examples can be edited, compiled and run on a web page: an example is picked from a dropdown, its source is shown in the editor, and Run compiles it and runs it in the pane next to it. It is what karl2d.com/playground serves.
 
-The compiler is built as a WebAssembly (WASI) module with `build_odin_wasi.sh` and generates code with the direct wasm backend (`-backend:wasm`), so no LLVM or linker is involved. Programs are compiled for `js_wasm32` and run with the normal Odin JS runtime (`core/sys/wasm/js/odin.js`) plus Karl2D's web audio backend.
+The compiler is built as a WebAssembly (WASI) module with `build_odin_wasi.sh` from the [wasm backend fork of Odin](https://github.com/karl-zylinski/Odin/tree/wasm-backend) and generates code with the direct wasm backend (`-backend:wasm`), so no LLVM or linker is involved. Programs are compiled for `js_wasm32` and run with the normal Odin JS runtime (`core/sys/wasm/js/odin.js`) plus Karl2D's web audio backend.
+
+This directory is the source. The built playground goes in the directory above it, which is the one that is served; nothing of it is kept in git, `.github/workflows/deploy.yml` builds it when the site is deployed. A directory whose name begins with an underscore is never published, so the sources are not on the site.
 
 ## Building
 
-Needs `./odin` (built with `build_odin.sh`), a Karl2D checkout (default `../karl2d`) and [wasi-sdk](https://github.com/WebAssembly/wasi-sdk) (default location `~/wasi-sdk`, override with `WASI_SDK=...`):
+Needs a checkout of the Odin fork (default `../../../Odin`, i.e. next to this repository), a Karl2D checkout (default `../../../karl2d`), [wasi-sdk](https://github.com/WebAssembly/wasi-sdk) (default `~/wasi-sdk`, override with `WASI_SDK=...`) and an Odin compiler to run the packer with (the one in the Odin checkout, or any recent `odin` on the `PATH`):
 
 ```
-./playground/build_playground.sh [path/to/karl2d]
-python3 -m http.server -d playground/dist 8000
+./playground/_source/build_playground.sh
+python3 -m http.server -d playground 8000
 ```
 
-Set `ODIN_WASM=path/to/odin.wasm` to reuse an already built compiler module instead of rebuilding it (which takes a few minutes).
+`ODIN=`, `KARL2D=` and `OUT=` say where those are if they are somewhere else. Set `ODIN_WASM=path/to/odin.wasm` to reuse an already built compiler module instead of building one (which takes a few minutes). The Karl2D checkout is fast-forwarded to `origin/master` first, so the playground cannot quietly ship stale Karl2D sources; `KARL2D_NO_UPDATE=1` leaves it alone.
 
-`playground/dist` then contains:
+`playground/` then contains:
 
 - `odin.wasm`: the compiler (3.8 MB, 1.1 MB gzipped by the server)
-- `odin_root.pack.gz`: the sources the compiler reads, packed by `playground/pack_root` and gzipped (9 MB becomes 2.3 MB). All of `base` and `core` except what can never be used in the browser (files whose name suffix or `#+build` tags exclude `js`/`wasm32`, the machine code library `core:rexcode`, the `core:sys` packages of other operating systems), the `vendor` packages Karl2D and `vendor:box2d` need together with their wasm objects, and the Karl2D library itself under `karl2d/`. The compiler reads them from an in-memory file system, `ODIN_ROOT` is `/odin`.
+- `packs/`: the sources the compiler reads, packed by `pack_root`, one gzipped pack per package plus `manifest.json`. All of `base` and `core` except what can never be used in the browser (files whose name suffix or `#+build` tags exclude `js`/`wasm32`, the machine code library `core:rexcode`, the `core:sys` packages of other operating systems), the `vendor` packages Karl2D and `vendor:box2d` need together with their wasm objects, and the Karl2D library itself under `karl2d/`. The manifest lists every package with its files and imports, so the compiler can look around the file system, and a pack is fetched when a program's imports say it is needed: a program that imports nothing from `core:crypto` never downloads it. The compiler reads them from an in-memory file system, `ODIN_ROOT` is `/odin`.
 - `examples/`: the web capable Karl2D examples, one directory each, listed in `examples.json`. They are fetched when selected, so only the assets of the chosen example are downloaded.
 - `web_entry.odin`: Karl2D's web entry point (`build_web/web_entry_templates/web_entry_template.odin`), compiled together with the example.
 - `odin.js`, `audio_backend_web_audio.js`, `audio_backend_web_audio_processor.js`: the JS runtimes.
 - `index.html`, `karl2d_playground.js`, `editor.js`, `game.html`, `compiler_worker.js`, `wasi.js`: the page. `editor.js` is the code editor (a transparent textarea over a syntax highlighted `<pre>`, no dependencies). `generic.html` + `playground.js` is a plain Odin playground (one source file, no Karl2D) on top of the same compiler worker.
+- `build.json`: the Odin and Karl2D commits this was built from. The deploy workflow reads it off the live site to see whether either has moved since.
 
 ## How it works
 

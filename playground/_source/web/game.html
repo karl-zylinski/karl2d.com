@@ -13,13 +13,30 @@
 	</head>
 	<body id="body" style="height: 100%; padding: 0; margin: 0; overflow: hidden; background-color: black;">
 		<!-- tabindex so that the page can hand it the focus after a run -->
-		<canvas id="webgl-canvas" tabindex="0" style="touch-action: none; outline: none;" oncontextmenu="return false;" onmousedown="event.target.focus()" onkeydown="event.preventDefault()"></canvas>
+		<canvas id="webgl-canvas" tabindex="0" style="touch-action: none; outline: none;" oncontextmenu="return false;" onmousedown="event.target.focus()"></canvas>
 
 		<script type="text/javascript" src="audio_backend_web_audio.js?version=%%"></script>
 		<script type="text/javascript" src="odin.js?version=%%"></script>
 		<script type="text/javascript">
-			// Keep keyboard commands from triggering outside of the iframe
-			document.getElementById("body").addEventListener("keydown", (ev) => ev.preventDefault());
+			// The keys whose usual browser behaviour would get in the way of a
+			// game: moving the focus out of the canvas, scrolling the page.
+			//
+			// Only keys that are not text are in here. Cancelling a keydown
+			// also cancels the keypress that would have followed it, and a
+			// keypress is where a typed character comes from, so taking every
+			// key away from the browser makes `k2.get_typed_runes` return
+			// nothing and a text field in a program impossible to type in.
+			// Combinations with ctrl, meta or alt are left alone as well, so
+			// that reloading and the developer tools still work.
+			const KEYS_FOR_THE_GAME = new Set([
+				"Tab", "Backspace", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
+				"PageUp", "PageDown", "Home", "End",
+			]);
+			window.addEventListener("keydown", (event) => {
+				if (!event.ctrlKey && !event.metaKey && !event.altKey && KEYS_FOR_THE_GAME.has(event.key)) {
+					event.preventDefault();
+				}
+			});
 
 			function report(message) {
 				window.parent.postMessage({type: "game", text: message}, "*");

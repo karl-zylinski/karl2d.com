@@ -18,22 +18,22 @@
 		<script type="text/javascript" src="audio_backend_web_audio.js?version=%%"></script>
 		<script type="text/javascript" src="odin.js?version=%%"></script>
 		<script type="text/javascript">
-			// The keys whose usual browser behaviour would get in the way of a
-			// game: moving the focus out of the canvas, scrolling the page.
-			//
-			// Only keys that are not text are in here. Cancelling a keydown
-			// also cancels the keypress that would have followed it, and a
-			// keypress is where a typed character comes from, so taking every
-			// key away from the browser makes `k2.get_typed_runes` return
-			// nothing and a text field in a program impossible to type in.
-			// Combinations with ctrl, meta or alt are left alone as well, so
-			// that reloading and the developer tools still work.
-			const KEYS_FOR_THE_GAME = new Set([
-				"Tab", "Backspace", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
+			// The same handling as Karl2D's own web template
+			// (build_web/web_entry_templates/index_template.html): while the
+			// canvas has the focus, the keys the browser would rather scroll
+			// or move the focus with are taken from it. Karl2D reads a typed
+			// character from the keydown event, so cancelling these does not
+			// stop a program's text field from working, and combinations with
+			// ctrl, meta or alt are left alone so that reloading and the
+			// developer tools still work.
+			const keysForTheGame = new Set([
+				" ", "Tab", "Backspace", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
 				"PageUp", "PageDown", "Home", "End",
 			]);
+			const keyboardCanvas = document.getElementById("webgl-canvas");
 			window.addEventListener("keydown", (event) => {
-				if (!event.ctrlKey && !event.metaKey && !event.altKey && KEYS_FOR_THE_GAME.has(event.key)) {
+				if (document.activeElement === keyboardCanvas && !event.ctrlKey && !event.metaKey
+				    && !event.altKey && keysForTheGame.has(event.key)) {
 					event.preventDefault();
 				}
 			});

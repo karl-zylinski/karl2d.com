@@ -37,6 +37,34 @@ const ODIN_TYPES = new Set([
 	"uintptr", "any", "typeid",
 ]);
 
+// The shaders an example loads are edited here too. GLSL is close enough to
+// Odin for the same tokenizer: only the words it knows differ.
+const GLSL_KEYWORDS = new Set([
+	"attribute", "varying", "uniform", "buffer", "shared", "layout", "location", "binding",
+	"in", "out", "inout", "const", "precision", "highp", "mediump", "lowp", "flat", "smooth",
+	"noperspective", "centroid", "invariant", "struct", "if", "else", "for", "while", "do",
+	"switch", "case", "default", "break", "continue", "return", "discard", "true", "false",
+]);
+
+const GLSL_TYPES = new Set([
+	"void", "bool", "int", "uint", "float", "double", "half",
+	"vec2", "vec3", "vec4", "bvec2", "bvec3", "bvec4", "ivec2", "ivec3", "ivec4",
+	"uvec2", "uvec3", "uvec4", "dvec2", "dvec3", "dvec4",
+	"float2", "float3", "float4", "int2", "int3", "int4", "half2", "half3", "half4",
+	"mat2", "mat3", "mat4", "mat2x2", "mat2x3", "mat2x4", "mat3x2", "mat3x3", "mat3x4",
+	"mat4x2", "mat4x3", "mat4x4", "float2x2", "float3x3", "float4x4",
+	"sampler1D", "sampler2D", "sampler3D", "samplerCube", "sampler2DArray", "sampler2DShadow",
+	"isampler2D", "usampler2D", "Texture2D", "SamplerState",
+]);
+
+// A file the editor has no word list for (a README, a JSON world) still gets
+// its comments, strings and numbers coloured
+const EDITOR_LANGUAGES = {
+	odin:  {keywords: ODIN_KEYWORDS, types: ODIN_TYPES},
+	glsl:  {keywords: GLSL_KEYWORDS, types: GLSL_TYPES},
+	plain: {keywords: new Set(), types: new Set()},
+};
+
 // One pass over the text: comments, strings, runes, numbers, directives and
 // identifiers. Block comments nest in Odin, which a regex cannot express, so
 // `/*` is only matched here and then scanned by hand below.
@@ -51,12 +79,12 @@ function editorEscape(text) {
 
 // Classifies an identifier by what surrounds it: `foo(` and `foo ::` are
 // procedures, `k2.` is a package prefix.
-function editorIdentifierClass(text, start, end) {
+function editorIdentifierClass(text, start, end, language) {
 	const word = text.slice(start, end);
-	if (ODIN_KEYWORDS.has(word)) {
+	if (language.keywords.has(word)) {
 		return "ed-kw";
 	}
-	if (ODIN_TYPES.has(word)) {
+	if (language.types.has(word)) {
 		return "ed-ty";
 	}
 	let i = end;
@@ -77,7 +105,7 @@ function editorIdentifierClass(text, start, end) {
 
 // Highlights text[from:to], but tokenizes from the start so that the state of
 // block comments and raw strings is right no matter where the window begins.
-function editorHighlight(text, from, to) {
+function editorHighlight(text, from, to, language) {
 	const out = [];
 	let pos = 0;
 	let match;
@@ -124,7 +152,7 @@ function editorHighlight(text, from, to) {
 		} else if (first >= "0" && first <= "9") {
 			cls = "ed-num";
 		} else {
-			cls = editorIdentifierClass(text, start, end);
+			cls = editorIdentifierClass(text, start, end, language);
 		}
 		push(pos, start, null);
 		push(start, end, cls);
@@ -135,6 +163,7 @@ function editorHighlight(text, from, to) {
 }
 
 function createEditor(container) {
+	let language = EDITOR_LANGUAGES.odin; // what the file that is open is written in
 	container.classList.add("ed");
 	container.innerHTML =
 		'<div class="ed-gutter"><div class="ed-numbers"></div></div>' +
@@ -175,7 +204,7 @@ function createEditor(container) {
 			const from = Math.max(0, firstVisible - EDITOR_MARGIN_LINES);
 			const to = Math.min(count, firstVisible + visible + EDITOR_MARGIN_LINES);
 			const text = input.value;
-			code.innerHTML = editorHighlight(text, lineStarts[from], to < count ? lineStarts[to] : text.length);
+			code.innerHTML = editorHighlight(text, lineStarts[from], to < count ? lineStarts[to] : text.length, language);
 			const parts = [];
 			for (let line = from; line < to; line++) {
 				const number = line + 1;
@@ -320,6 +349,11 @@ function createEditor(container) {
 	return {
 		getValue() {
 			return input.value;
+		},
+		// Which word list the highlighting uses: "odin", "glsl" or "plain"
+		setLanguage(name) {
+			language = EDITOR_LANGUAGES[name] || EDITOR_LANGUAGES.plain;
+			render(true);
 		},
 		setValue(text) {
 			input.value = text;

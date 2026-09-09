@@ -171,8 +171,9 @@ async function fetchExampleFiles(example) {
 			files.set(path, await fetchBinary("examples/" + example.dir + "/" + path + "?version=" + example.version));
 		} catch (e) {
 			// A server may refuse to serve a file the example does not really
-			// need (dotfiles, say): only its sources are worth failing over
-			if (isSource(path)) {
+			// need (dotfiles, say): only what it is written in is worth
+			// failing over
+			if (isEditable(path)) {
 				throw e;
 			}
 			consoleElement.textContent += e.message + "\n";
@@ -234,6 +235,22 @@ function isSource(path) {
 	return path.endsWith(".odin");
 }
 
+// What can be opened in the editor, and the word list its highlighting uses.
+// Everything else in an example is data: a texture, a sound, a font.
+const EDITABLE_TYPES = {
+	odin: "odin",
+	glsl: "glsl", vert: "glsl", frag: "glsl", vs: "glsl", fs: "glsl", hlsl: "glsl", wgsl: "glsl",
+	json: "plain", txt: "plain", md: "plain", csv: "plain", ini: "plain", cfg: "plain",
+};
+
+function isEditable(path) {
+	return fileExtension(path) in EDITABLE_TYPES;
+}
+
+function languageOf(path) {
+	return EDITABLE_TYPES[fileExtension(path)] || "plain";
+}
+
 // Keeps what is in the editor, so that opening another file or example and
 // coming back shows the edits again.
 function saveEditor() {
@@ -247,6 +264,7 @@ function openFile(path) {
 	const files = exampleFiles.get(current.dir);
 	const key = fileKey(current.dir, path);
 	currentPath = path;
+	editor.setLanguage(languageOf(path));
 	editor.setValue(edited.has(key) ? edited.get(key) : new TextDecoder().decode(files.get(path)));
 	updateFileList();
 }
@@ -276,7 +294,7 @@ function makeFileEntry(path, data) {
 	const extension = fileExtension(path);
 	const size = formatSize(data.byteLength);
 	const entry = document.createElement("div");
-	entry.className = "file" + (isSource(path) ? " source" : "") + (path === currentPath ? " open" : "");
+	entry.className = "file" + (isEditable(path) ? " source" : "") + (path === currentPath ? " open" : "");
 	entry.title = path + "\n" + size;
 
 	const thumb = document.createElement("div");
@@ -304,7 +322,7 @@ function makeFileEntry(path, data) {
 	name.textContent = path.slice(path.lastIndexOf("/") + 1);
 	entry.appendChild(name);
 
-	if (isSource(path)) {
+	if (isEditable(path)) {
 		entry.addEventListener("click", () => openFile(path));
 	}
 	return entry;
@@ -312,7 +330,7 @@ function makeFileEntry(path, data) {
 
 // The main file first, then the other sources, then everything else
 function sortedFiles(example) {
-	const rank = (path) => path === example.main ? 0 : (isSource(path) ? 1 : 2);
+	const rank = (path) => path === example.main ? 0 : (isSource(path) ? 1 : (isEditable(path) ? 2 : 3));
 	return example.files.slice().sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
 }
 

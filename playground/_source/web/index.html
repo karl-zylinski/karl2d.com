@@ -5,13 +5,27 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<title>Karl2D Playground</title>
 		<link rel="icon" href="logo.png">
+		<!-- The card Discord, Twitter, Bluesky and the rest show when this is linked -->
+		<meta name="description" content="Edit, compile and run the Karl2D examples in the browser. The Odin compiler itself is WebAssembly, so nothing is compiled on a server.">
+		<meta property="og:type" content="website">
+		<meta property="og:site_name" content="Karl2D">
+		<meta property="og:title" content="Karl2D Playground">
+		<meta property="og:description" content="Edit, compile and run the Karl2D examples in the browser. The Odin compiler itself is WebAssembly, so nothing is compiled on a server.">
+		<meta property="og:url" content="https://karl2d.com/playground/">
+		<meta property="og:image" content="https://karl2d.com/playground/social.png">
+		<meta property="og:image:type" content="image/png">
+		<meta property="og:image:width" content="1200">
+		<meta property="og:image:height" content="630">
+		<meta property="og:image:alt" content="The Karl2D Playground with the space_cat example running next to its source code">
+		<meta name="twitter:card" content="summary_large_image">
 		<style>
 			html, body { height: 100%; margin: 0; background: #1e1e1e; color: #d4d4d4; font-family: sans-serif; }
 			body { display: flex; flex-direction: column; }
 			header { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: #2d2d2d; }
 			header h1 { font-size: 16px; margin: 0 12px 0 0; }
-			header h1 a { color: inherit; text-decoration: none; }
-			header h1 a:hover { text-decoration: underline; }
+			/* Plainly a link back to the site, in the blue the editor uses for keywords */
+			header h1 a { color: #569cd6; text-decoration: underline; }
+			header h1 a:hover { color: #9cdcfe; }
 			select { background: #1e1e1e; color: #d4d4d4; border: 1px solid #444; padding: 4px 6px; font-size: 14px; }
 			button { background: #0e639c; color: white; border: none; padding: 6px 16px; font-size: 14px; cursor: pointer; }
 			button:disabled { background: #555; }

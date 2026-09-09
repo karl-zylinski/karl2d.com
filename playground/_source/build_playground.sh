@@ -88,6 +88,13 @@ cp "$ODIN/core/sys/wasm/js/odin.js" "$SRC"/web/* "$OUT/"
 cp "$KARL2D/audio_backend_web_audio.js" "$KARL2D/audio_backend_web_audio_processor.js" "$OUT/"
 cp "$KARL2D/build_web/web_entry_templates/web_entry_template.odin" "$OUT/web_entry.odin"
 
+# A URL written as `thing.js?version=%%` in a page or a script gets a checksum
+# of what it points at, so that a request only misses the browser's cache when
+# what it asks for has really changed. GitHub Pages serves everything with a
+# ten minute lifetime and a reload does not reach the fetches the worker makes,
+# which is how a new page came to be seen next to an old pack once.
+python3 "$SRC/stamp_versions.py" "$OUT"
+
 # What this was built from: the deploy workflow reads it off the live site to
 # see whether Odin or Karl2D have moved since
 printf '{"odin": "%s", "karl2d": "%s", "built": "%s"}\n' \

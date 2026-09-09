@@ -22,6 +22,7 @@
 package pack_root
 
 import "core:fmt"
+import "core:hash"
 import "core:os"
 import "core:path/filepath"
 import "core:slice"
@@ -407,9 +408,17 @@ collect_vendor :: proc(p: ^Packer, odin_root: string, roots: []string) {
 }
 
 Example :: struct {
-	dir:   string,   // relative to the examples directory
-	main:  string,   // the source file shown in the editor
-	files: [dynamic]string,
+	dir:     string,   // relative to the examples directory
+	main:    string,   // the source file shown in the editor
+	files:   [dynamic]string,
+	version: string,   // the checksum of its files, for the URLs the page fetches them with
+	sum:     u32,      // that checksum while it is still being accumulated
+}
+
+// What a `?version=` in a URL carries: enough of a checksum that a file which
+// changed is fetched again and one which did not is taken from the cache
+version_of :: proc(data: []byte, seed: u32 = 0) -> u32 {
+	return hash.crc32(data, seed)
 }
 
 // The number of path segments in a relative path ("a/b" is 2, "" is 0)
@@ -499,15 +508,18 @@ collect_examples :: proc(examples_root, out_dir: string) -> [dynamic]Example {
 				if err := os.make_directory_all(filepath.dir(dst)); err != nil && err != .Exist {
 					fatal("Cannot create directory for %s: %v", dst, err)
 				}
+				data := read_file(info.fullpath)
 				if filepath.ext(info.name) == ".odin" {
 					depth := 1 + path_segments(ex.dir) + path_segments(rel_dir)
-					text := karl2d_import_form(string(read_file(info.fullpath)), depth)
-					if err := os.write_entire_file(dst, text); err != nil {
-						fatal("Cannot write %s: %v", dst, err)
-					}
-				} else if err := os.copy_file(dst, info.fullpath); err != nil {
-					fatal("Cannot copy %s to %s: %v", info.fullpath, dst, err)
+					data = transmute([]byte)karl2d_import_form(string(data), depth)
 				}
+				if err := os.write_entire_file(dst, data); err != nil {
+					fatal("Cannot write %s: %v", dst, err)
+				}
+				// The example's version covers the names as well as the
+				// contents, so that a file appearing or being renamed counts
+				ex.sum = version_of(transmute([]byte)rel, ex.sum)
+				ex.sum = version_of(data, ex.sum)
 				append(&ex.files, strings.clone(rel))
 			}
 		}
@@ -530,12 +542,16 @@ collect_examples :: proc(examples_root, out_dir: string) -> [dynamic]Example {
 				if err := os.make_directory_all(filepath.dir(dst)); err != nil && err != .Exist {
 					fatal("Cannot create directory for %s: %v", dst, err)
 				}
-				if err := os.copy_file(dst, src); err != nil {
-					fatal("Cannot copy %s to %s: %v", src, dst, err)
+				data := read_file(src)
+				if err := os.write_entire_file(dst, data); err != nil {
+					fatal("Cannot write %s: %v", dst, err)
 				}
+				ex.sum = version_of(transmute([]byte)loaded, ex.sum)
+				ex.sum = version_of(data, ex.sum)
 				append(&ex.files, strings.clone(loaded))
 			}
 		}
+		ex.version = fmt.aprintf("%08x", ex.sum)
 		append(examples, ex)
 	}
 	walk(examples_root, "", out_dir, &examples)
@@ -546,7 +562,7 @@ write_manifest :: proc(examples: []Example, path: string) {
 	b := strings.builder_make()
 	strings.write_string(&b, "[\n")
 	for ex, i in examples {
-		fmt.sbprintf(&b, "\t{{\"dir\": %q, \"main\": %q, \"files\": [", ex.dir, ex.main)
+		fmt.sbprintf(&b, "\t{{\"dir\": %q, \"main\": %q, \"version\": %q, \"files\": [", ex.dir, ex.main, ex.version)
 		for f, j in ex.files {
 			fmt.sbprintf(&b, "%s%q", ", " if j > 0 else "", f)
 		}
@@ -569,6 +585,7 @@ Package :: struct {
 	dir:     string,
 	entries: [dynamic]Entry,
 	imports: [dynamic]string,
+	version: string,  // the checksum of the pack, for the URL the page fetches it with
 }
 
 dir_of :: proc(pack_path: string) -> string {
@@ -738,7 +755,7 @@ group_packages :: proc(p: ^Packer) -> [dynamic]Package {
 	return packages
 }
 
-write_pack :: proc(entries: []Entry, path: string) -> int {
+write_pack :: proc(entries: []Entry, path: string) -> (total: int, version: string) {
 	out: [dynamic]byte
 	defer delete(out)
 	put_u32 :: proc(out: ^[dynamic]byte, v: u32) {
@@ -746,7 +763,6 @@ write_pack :: proc(entries: []Entry, path: string) -> int {
 	}
 	append(&out, "ODINPK01")
 	put_u32(&out, u32(len(entries)))
-	total := 0
 	for e in entries {
 		put_u32(&out, u32(len(e.path)))
 		append(&out, e.path)
@@ -760,7 +776,7 @@ write_pack :: proc(entries: []Entry, path: string) -> int {
 	if err := os.write_entire_file(path, out[:]); err != nil {
 		fatal("Cannot write %s: %v", path, err)
 	}
-	return total
+	return total, fmt.aprintf("%08x", version_of(out[:]))
 }
 
 // What the worker needs to serve the file system without the packs: every
@@ -773,7 +789,7 @@ write_pack_manifest :: proc(packages: []Package, path: string) {
 	for pkg, i in packages {
 		strings.write_string(&b, ",\n" if i > 0 else "\n")
 		fmt.sbprintf(&b, "%q", pkg.dir)
-		strings.write_string(&b, ":{\"files\":[")
+		fmt.sbprintf(&b, ":{{\"version\":%q,\"files\":[", pkg.version)
 		for e, j in pkg.entries {
 			name := e.path[len(pkg.dir)+1:] if len(pkg.dir) > 0 else e.path
 			fmt.sbprintf(&b, "%s[%q,%d]", "," if j > 0 else "", name, len(e.data))
@@ -826,8 +842,10 @@ main :: proc() {
 	}
 	packages := group_packages(&p)
 	total := 0
-	for pkg in packages {
-		total += write_pack(pkg.entries[:], join(packs_out, fmt.tprintf("%s.pack", pkg.dir)))
+	for &pkg in packages {
+		bytes, version := write_pack(pkg.entries[:], join(packs_out, fmt.tprintf("%s.pack", pkg.dir)))
+		total += bytes
+		pkg.version = version
 	}
 	write_pack_manifest(packages[:], join(packs_out, "manifest.json"))
 	fmt.printfln("%s: %d packages, %d files, %d bytes; %d examples in %s",

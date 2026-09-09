@@ -15,8 +15,8 @@
 		<!-- tabindex so that the page can hand it the focus after a run -->
 		<canvas id="webgl-canvas" tabindex="0" style="touch-action: none; outline: none;" oncontextmenu="return false;" onmousedown="event.target.focus()" onkeydown="event.preventDefault()"></canvas>
 
-		<script type="text/javascript" src="audio_backend_web_audio.js"></script>
-		<script type="text/javascript" src="odin.js"></script>
+		<script type="text/javascript" src="audio_backend_web_audio.js?version=%%"></script>
+		<script type="text/javascript" src="odin.js?version=%%"></script>
 		<script type="text/javascript">
 			// Keep keyboard commands from triggering outside of the iframe
 			document.getElementById("body").addEventListener("keydown", (ev) => ev.preventDefault());

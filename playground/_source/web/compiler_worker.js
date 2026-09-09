@@ -32,8 +32,8 @@ const PREFETCH_AT_STARTUP = ["karl2d", "base/runtime", "core/fmt", "core/os"];
 
 async function setup() {
 	const [moduleResponse, manifestResponse] = await Promise.all([
-		fetch("odin.wasm"),
-		fetch("packs/manifest.json"),
+		fetch("odin.wasm?version=%%"),
+		fetch("packs/manifest.json?version=%%"),
 	]);
 	const compiled = WebAssembly.compileStreaming(moduleResponse);
 	if (!manifestResponse.ok) {
@@ -52,7 +52,10 @@ function fetchPack(dir) {
 	let pending = packFetches.get(dir);
 	if (pending === undefined) {
 		pending = (async () => {
-			const response = await fetch("packs/" + dir + ".pack.gz");
+			// The version is the pack's own checksum, from the manifest: a
+			// pack that did not change keeps the copy the browser has
+			const version = packages[dir] === undefined ? "" : "?version=" + packages[dir].version;
+			const response = await fetch("packs/" + dir + ".pack.gz" + version);
 			if (!response.ok) {
 				throw new Error("Failed to fetch packs/" + dir + ".pack.gz: " + response.status);
 			}

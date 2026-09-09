@@ -24,7 +24,7 @@ const canvas = document.getElementById("webgl-canvas");
 
 sourceElement.value = DEFAULT_SOURCE;
 
-const worker = new Worker("compiler_worker.js");
+const worker = new Worker("compiler_worker.js?version=%%");
 let compiling = false;
 let runGeneration = 0;
 

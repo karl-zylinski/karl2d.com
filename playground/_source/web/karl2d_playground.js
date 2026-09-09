@@ -35,7 +35,7 @@ const splashText = document.getElementById("splash-text");
 const NARROW = window.matchMedia("(max-width: 820px)");
 let showingGame = false;
 
-const worker = new Worker("compiler_worker.js");
+const worker = new Worker("compiler_worker.js?version=%%");
 
 worker.onmessage = (e) => {
 	const msg = e.data;
@@ -168,7 +168,7 @@ async function fetchExampleFiles(example) {
 	const files = new Map();
 	await Promise.all(example.files.map(async (path) => {
 		try {
-			files.set(path, await fetchBinary("examples/" + example.dir + "/" + path));
+			files.set(path, await fetchBinary("examples/" + example.dir + "/" + path + "?version=" + example.version));
 		} catch (e) {
 			// A server may refuse to serve a file the example does not really
 			// need (dotfiles, say): only its sources are worth failing over
@@ -407,7 +407,7 @@ function runProgram(bytes) {
 		frame.contentWindow.postMessage({type: "run", wasm: bytes}, "*", [bytes]);
 	};
 	window.addEventListener("message", onReady);
-	frame.src = "game.html";
+	frame.src = "game.html?version=%%";
 }
 
 window.addEventListener("message", (e) => {
@@ -445,7 +445,7 @@ async function setup() {
 		history.replaceState(null, "", location.search); // nothing is running after a reload
 	}
 	const params = new URLSearchParams(window.location.search);
-	const [manifest, entry] = await Promise.all([fetch("examples/examples.json"), fetch("web_entry.odin")]);
+	const [manifest, entry] = await Promise.all([fetch("examples/examples.json?version=%%"), fetch("web_entry.odin?version=%%")]);
 	examples = await manifest.json();
 	entrySource = await entry.text();
 	for (const example of examples) {

@@ -10,6 +10,8 @@
 			body { display: flex; flex-direction: column; }
 			header { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: #2d2d2d; }
 			header h1 { font-size: 16px; margin: 0 12px 0 0; }
+			header h1 a { color: inherit; text-decoration: none; }
+			header h1 a:hover { text-decoration: underline; }
 			select { background: #1e1e1e; color: #d4d4d4; border: 1px solid #444; padding: 4px 6px; font-size: 14px; }
 			button { background: #0e639c; color: white; border: none; padding: 6px 16px; font-size: 14px; cursor: pointer; }
 			button:disabled { background: #555; }
@@ -91,7 +93,7 @@
 	<!-- The logo is up in the game view until a program runs there -->
 	<body class="splash">
 		<header>
-			<h1>Karl2D Playground</h1>
+			<h1><a href="https://karl2d.com" title="Karl2D">Karl2D</a> Playground</h1>
 			<select id="example" disabled></select>
 			<button id="run" disabled>Run<span class="shortcut"> (Ctrl+Enter)</span></button>
 			<span id="status">Loading compiler...</span>

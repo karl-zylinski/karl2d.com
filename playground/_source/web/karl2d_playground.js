@@ -186,6 +186,26 @@ function exampleRoot(example) {
 	return "odin/karl2d/examples/" + example.dir + "/";
 }
 
+function pathSegments(path) {
+	return path.split("/").filter((part) => part !== "" && part !== ".").length;
+}
+
+// The examples here import Karl2D as `import k2 "karl2d"`, which reads better
+// than the `import k2 "../.."` the Karl2D repository needs, where an example
+// really does sit two directories below the library. The packer rewrote the
+// copies when it made them; this puts the relative path back, because Odin
+// resolves an import with no collection in it relative to the file it is
+// written in. Only the path inside the quotes changes, so the line numbers
+// the compiler reports still match what the editor shows.
+const KARL2D_IMPORT = /^(\s*(?:@\([^)]*\)\s*)*import\s+(?:[A-Za-z_]\w*\s+)?")karl2d(\/[^"]*)?"/;
+
+function repositoryImports(text, depth) {
+	const up = new Array(depth).fill("..").join("/");
+	return text.split("\n").map(
+		(line) => line.replace(KARL2D_IMPORT, (all, head, sub) => head + up + (sub || "") + '"')
+	).join("\n");
+}
+
 // The example as the compiler sees it: its files (edited ones as text, the
 // rest as the bytes that were fetched) and Karl2D's web entry point
 async function exampleFileList(example) {
@@ -194,7 +214,13 @@ async function exampleFileList(example) {
 	const list = [];
 	for (const [path, data] of files) {
 		const key = fileKey(example.dir, path);
-		list.push({path: root + path, data: edited.has(key) ? edited.get(key) : data});
+		let source = edited.has(key) ? edited.get(key) : data;
+		if (isSource(path)) {
+			const text = typeof source === "string" ? source : new TextDecoder().decode(new Uint8Array(source));
+			const dir = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
+			source = repositoryImports(text, 1 + pathSegments(example.dir) + pathSegments(dir));
+		}
+		list.push({path: root + path, data: source});
 	}
 	list.push({path: root + "build/web/entry.odin", data: entrySource});
 	return list;

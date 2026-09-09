@@ -412,6 +412,44 @@ Example :: struct {
 	files: [dynamic]string,
 }
 
+// The number of path segments in a relative path ("a/b" is 2, "" is 0)
+path_segments :: proc(path: string) -> int {
+	path := path
+	n := 0
+	for part in strings.split_iterator(&path, "/") {
+		if part != "" {
+			n += 1
+		}
+	}
+	return n
+}
+
+// In the Karl2D repository an example imports the library by the path it has
+// there, `import k2 "../.."`. On the playground that is noise: the reader is
+// looking at one example, not at a checkout. The copies say
+// `import k2 "karl2d"` instead, which the page turns back into the relative
+// path before it hands the sources to the compiler (Odin resolves a path with
+// no collection in it relative to the file it appears in). `depth` is how far
+// the file sits below the Karl2D root.
+karl2d_import_form :: proc(text: string, depth: int) -> string {
+	up := strings.repeat("../", depth, context.temp_allocator)
+	up = up[:len(up)-1] // "../.." rather than "../../"
+	exact := fmt.tprintf("\"%s\"", up)
+	prefix := fmt.tprintf("\"%s/", up)
+	b := strings.builder_make(context.temp_allocator)
+	rest := text
+	for line in strings.split_after_iterator(&rest, "\n") {
+		if !strings.has_prefix(strip_attribute(line), "import ") {
+			strings.write_string(&b, line)
+			continue
+		}
+		l, _ := strings.replace_all(line, exact, "\"karl2d\"", context.temp_allocator)
+		l, _ = strings.replace_all(l, prefix, "\"karl2d/", context.temp_allocator)
+		strings.write_string(&b, l)
+	}
+	return strings.to_string(b)
+}
+
 // Finds the Karl2D examples that have the `init`/`step`/`shutdown` procedures
 // the web entry point needs and copies them to `out_dir`.
 collect_examples :: proc(examples_root, out_dir: string) -> [dynamic]Example {
@@ -461,7 +499,13 @@ collect_examples :: proc(examples_root, out_dir: string) -> [dynamic]Example {
 				if err := os.make_directory_all(filepath.dir(dst)); err != nil && err != .Exist {
 					fatal("Cannot create directory for %s: %v", dst, err)
 				}
-				if err := os.copy_file(dst, info.fullpath); err != nil {
+				if filepath.ext(info.name) == ".odin" {
+					depth := 1 + path_segments(ex.dir) + path_segments(rel_dir)
+					text := karl2d_import_form(string(read_file(info.fullpath)), depth)
+					if err := os.write_entire_file(dst, text); err != nil {
+						fatal("Cannot write %s: %v", dst, err)
+					}
+				} else if err := os.copy_file(dst, info.fullpath); err != nil {
 					fatal("Cannot copy %s to %s: %v", info.fullpath, dst, err)
 				}
 				append(&ex.files, strings.clone(rel))

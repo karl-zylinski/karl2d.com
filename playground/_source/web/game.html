@@ -9,7 +9,11 @@
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<title>Karl2D Playground Game</title>
-		<link id="karl2d-favicon" rel="icon" href="">
+		<!-- Karl2D writes its own icon in here at init and from set_window_icon.
+		     The template leaves the href empty until then, which makes the
+		     browser ask for /favicon.ico; the playground has the same icon as a
+		     file, so it can start with it instead. -->
+		<link id="karl2d-favicon" rel="icon" href="icon.png?version=%%">
 	</head>
 	<body id="body" style="height: 100%; padding: 0; margin: 0; overflow: hidden; background-color: black;">
 		<!-- tabindex so that the page can hand it the focus after a run -->

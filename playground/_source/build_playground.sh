@@ -7,7 +7,9 @@
 # it and publishes the result.
 #
 # Usage: playground/_source/build_playground.sh
-#   ODIN=dir       the Odin fork with the wasm backend   (default ../../../Odin)
+#   ODIN=dir       the wodin checkout, the fork of Odin with the wasm backend
+#                  (default ../../../wodin, or ../../../Odin if that is the
+#                  name the checkout has)
 #   KARL2D=dir     the Karl2D checkout                   (default ../../../karl2d)
 #   OUT=dir        where the built playground goes       (default ..)
 #   ODIN_BIN=path  an Odin compiler to run the packer with (default $ODIN/odin,
@@ -19,7 +21,11 @@
 set -eu
 
 SRC=$(cd "$(dirname "$0")" && pwd)
-ODIN=$(cd "${ODIN:-$SRC/../../../Odin}" && pwd)
+if [ -z "${ODIN:-}" ]; then
+	ODIN=$SRC/../../../wodin
+	[ -d "$ODIN" ] || ODIN=$SRC/../../../Odin
+fi
+ODIN=$(cd "$ODIN" && pwd)
 KARL2D=$(cd "${KARL2D:-$SRC/../../../karl2d}" && pwd)
 mkdir -p "${OUT:=$SRC/..}"
 OUT=$(cd "$OUT" && pwd)

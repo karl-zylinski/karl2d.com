@@ -2,13 +2,13 @@
 
 Runs the Odin compiler in the browser so that the [Karl2D](https://github.com/karl-zylinski/karl2d) examples can be edited, compiled and run on a web page: an example is picked from a dropdown, its source is shown in the editor, and Run compiles it and runs it in the pane next to it. It is what karl2d.com/playground serves.
 
-The compiler is built as a WebAssembly (WASI) module with `build_odin_wasi.sh` from the [wasm backend fork of Odin](https://github.com/karl-zylinski/Odin/tree/wasm-backend) and generates code with the direct wasm backend (`-backend:wasm`), so no LLVM or linker is involved. Programs are compiled for `js_wasm32` and run with the normal Odin JS runtime (`core/sys/wasm/js/odin.js`) plus Karl2D's web audio backend.
+The compiler is built as a WebAssembly (WASI) module with `build_odin_wasi.sh` from [wodin](https://github.com/karl-zylinski/wodin), the fork of Odin that has the wasm backend, and generates code with the direct wasm backend (`-backend:wasm`), so no LLVM or linker is involved. Programs are compiled for `js_wasm32` and run with the normal Odin JS runtime (`core/sys/wasm/js/odin.js`) plus Karl2D's web audio backend.
 
 This directory is the source. The built playground goes in the directory above it, which is the one that is served; nothing of it is kept in git, `.github/workflows/deploy.yml` builds it when the site is deployed. A directory whose name begins with an underscore is never published, so the sources are not on the site.
 
 ## Building
 
-Needs a checkout of the Odin fork (default `../../../Odin`, i.e. next to this repository), a Karl2D checkout (default `../../../karl2d`), [wasi-sdk](https://github.com/WebAssembly/wasi-sdk) (default `~/wasi-sdk`, override with `WASI_SDK=...`) and an Odin compiler to run the packer with (the one in the Odin checkout, or any recent `odin` on the `PATH`):
+Needs a checkout of [wodin](https://github.com/karl-zylinski/wodin) (default `../../../wodin`, or `../../../Odin`, i.e. next to this repository), a Karl2D checkout (default `../../../karl2d`), [wasi-sdk](https://github.com/WebAssembly/wasi-sdk) (default `~/wasi-sdk`, override with `WASI_SDK=...`) and an Odin compiler to run the packer with (the one in the Odin checkout, or any recent `odin` on the `PATH`):
 
 ```
 ./playground/_source/build_playground.sh

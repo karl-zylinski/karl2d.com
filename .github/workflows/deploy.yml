@@ -1,7 +1,7 @@
 # Builds karl2d.com and publishes it to GitHub Pages.
 #
 # The site is mostly static files kept in this repository, but /playground is
-# built here: the Odin compiler from the wasm-backend fork is compiled to a
+# built here: the Odin compiler from the wodin fork is compiled to a
 # WASI module with wasi-sdk, the Odin and Karl2D sources are packed for it, and
 # the examples and the page itself come from playground/_source. So a push to
 # Odin or to Karl2D changes the site without anything being committed here,
@@ -30,8 +30,8 @@ permissions:
   id-token: write
 
 env:
-  ODIN_REPO: karl-zylinski/Odin
-  ODIN_REF: wasm-backend
+  ODIN_REPO: karl-zylinski/wodin
+  ODIN_REF: master
   KARL2D_REPO: karl-zylinski/karl2d
   KARL2D_REF: master
   WASI_SDK_VERSION: "34.0"
